@@ -1,73 +1,71 @@
 // tests/admin.spec.js
 // TC-ADM-01 through TC-ADM-08
-// Tests: System Users, Job Titles, Pay Grades, Locations, Config
+// Tests: System Users, Job Titles, Pay Grades, Locations, Admin navigation
 
 const { test, expect } = require('@playwright/test');
 const { ROUTES } = require('../utils/constants');
+const { openPage, waitForPageReady, topNavTab } = require('../utils/helpers');
 
 test.describe('Admin Module', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(ROUTES.admin, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('.oxd-table', { timeout: 35000 });
+    await openPage(page, ROUTES.admin);
   });
 
   // TC-ADM-01
   test('TC-ADM-01: should display System Users list', async ({ page }) => {
     await expect(page.locator('.oxd-topbar-header-breadcrumb')).toContainText('User Management');
     await expect(page.locator('.oxd-table-header')).toBeVisible();
-    await expect(page.locator('.oxd-table-card').first()).toBeVisible();;
+    await expect(page.locator('.oxd-table-card').first()).toBeVisible();
   });
 
   // TC-ADM-02
   test('TC-ADM-02: should open Add System User form', async ({ page }) => {
-    await page.click('button:has-text("Add")');
-    await page.waitForURL(/saveSystemUser/, { timeout: 20000 });
-    await expect(page.locator('h6:has-text("Add User")')).toBeVisible();
+    await page.getByRole('button', { name: 'Add' }).click();
+    await page.waitForURL(/saveSystemUser/);
+    await expect(page.locator('h6', { hasText: 'Add User' })).toBeVisible();
   });
 
   // TC-ADM-03
   test('TC-ADM-03: should validate required fields on Add User form', async ({ page }) => {
-    await page.click('button:has-text("Add")');
-    await page.waitForURL(/saveSystemUser/, { timeout: 20000 });
-    await page.click('button[type="submit"]');
-    const errors = page.locator('.oxd-input-field-error-message');
-    await expect(errors.first()).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Add' }).click();
+    await page.waitForURL(/saveSystemUser/);
+    await waitForPageReady(page);
+    await page.locator('button[type="submit"]').click();
+    await expect(page.locator('.oxd-input-field-error-message').first()).toBeVisible();
   });
 
   // TC-ADM-04
   test('TC-ADM-04: should search system users by username', async ({ page }) => {
-    const usernameInput = page.locator('.oxd-table-filter-area input').first();
-    await usernameInput.fill('Admin');
-    await page.click('button[type="submit"]');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.oxd-table-card').first()).toBeVisible({ timeout: 20000 });
+    await page.locator('.oxd-table-filter-area input').first().fill('Admin');
+    await page.locator('button[type="submit"]').click();
+    await waitForPageReady(page);
+    await expect(page.locator('.oxd-table-card').first()).toBeVisible();
+    await expect(page.locator('.oxd-table-card').first()).toContainText('Admin');
   });
 
   // TC-ADM-05
   test('TC-ADM-05: should navigate to Job Titles page', async ({ page }) => {
-    await page.goto('https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewJobTitleList', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await expect(page.locator('.oxd-table-header')).toBeVisible({ timeout: 19000 });
+    await openPage(page, ROUTES.adminJobTitles);
+    await expect(page.locator('.oxd-table-header')).toBeVisible();
   });
 
   // TC-ADM-06
   test('TC-ADM-06: should navigate to Pay Grades page', async ({ page }) => {
-    await page.goto('https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewPayGrades', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await expect(page.locator('.orangehrm-container')).toBeVisible({ timeout: 19000 });
+    await openPage(page, ROUTES.adminPayGrades);
+    await expect(page.locator('.orangehrm-container')).toBeVisible();
   });
 
   // TC-ADM-07
   test('TC-ADM-07: should navigate to Organization Locations', async ({ page }) => {
-    await page.goto('https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewLocations', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await expect(page.locator('.oxd-table-header')).toBeVisible({ timeout: 19000 });
+    await openPage(page, ROUTES.adminLocations);
+    await expect(page.locator('.oxd-table-header')).toBeVisible();
   });
 
   // TC-ADM-08
   test('TC-ADM-08: should display all Admin top-nav sections', async ({ page }) => {
     const adminSections = ['User Management', 'Job', 'Organization', 'Qualifications', 'Nationalities', 'Configuration'];
     for (const section of adminSections) {
-      await expect(
-        page.locator('.oxd-topbar-body-nav-tab', { hasText: section }).first()
-      ).toBeVisible({ timeout: 10000 });
+      await expect(topNavTab(page, section)).toBeVisible();
     }
   });
 });

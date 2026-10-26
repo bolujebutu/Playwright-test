@@ -1,44 +1,49 @@
+// @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
 const BASE_URL = 'https://opensource-demo.orangehrmlive.com';
 const AUTH_FILE = 'playwright/.auth/admin.json';
+const isCI = !!process.env.CI;
 
 module.exports = defineConfig({
   testDir: './tests',
-  fullyParallel: false,
-  forbidOnly: false,
-  retries: 0,
-  workers: 1,
-  timeout: 60000,
-  expect: { timeout: 15000 },
 
-  reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
+  // The public demo is shared and slow: run one test at a time and allow generous timeouts
+  fullyParallel: false,
+  workers: 1,
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
+
+  forbidOnly: isCI,         // fail CI if a test.only is left in by mistake
+  retries: isCI ? 2 : 1,    // the shared demo site occasionally hiccups
+
+  reporter: isCI
+    ? [['list'], ['github'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
+    : [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
 
   use: {
     baseURL: BASE_URL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    headless: true,
     viewport: { width: 1280, height: 720 },
-    navigationTimeout: 30000,
-    actionTimeout: 15000,
+    navigationTimeout: 45_000,
+    actionTimeout: 15_000,
+    screenshot: 'only-on-failure',
+    trace: 'on-first-retry',
+    video: 'retain-on-failure',
   },
 
   projects: [
     {
       name: 'setup',
-      testMatch: '**/auth.setup.js',
-      use: { baseURL: BASE_URL, headless: true },
+      testMatch: /auth\.setup\.js/,
     },
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: BASE_URL,
         storageState: AUTH_FILE,
       },
       dependencies: ['setup'],
-      testIgnore: ['**/auth.setup.js'],
+      testIgnore: /auth\.setup\.js/,
     },
   ],
 

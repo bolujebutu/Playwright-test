@@ -1,94 +1,148 @@
 // utils/helpers.js
-// Reusable helper functions for common UI interactions in OrangeHRM
+// Reusable helpers for common OrangeHRM interactions.
+//
+// Timing approach: never wait for 'networkidle' (the demo site keeps background
+// requests going, so it is slow and unreliable). Instead, wait for the specific
+// element a test needs, and for OrangeHRM's loading spinner to disappear.
+
+const { expect } = require('@playwright/test');
 
 /**
- * Logs in to OrangeHRM with given credentials.
+ * Waits until an OrangeHRM page has rendered and finished loading its data.
  * @param {import('@playwright/test').Page} page
- * @param {string} username
- * @param {string} password
  */
-async function login(page, username = 'Admin', password = 'admin123') {
-  await page.goto('/web/index.php/auth/login');
-  await page.waitForSelector('input[name="username"]', { timeout: 15000 });
-  await page.fill('input[name="username"]', username);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL('**/dashboard/**', { timeout: 20000 });
+async function waitForPageReady(page) {
+  await expect(page.locator('.oxd-topbar-header-breadcrumb')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.oxd-loading-spinner')).toHaveCount(0, { timeout: 30000 });
 }
 
 /**
- * Navigates to a sidebar menu item by its label text.
+ * Opens a route and waits until the page is ready.
  * @param {import('@playwright/test').Page} page
- * @param {string} menuLabel  e.g. 'PIM', 'Leave', 'Admin'
+ * @param {string} route  e.g. ROUTES.pim
  */
-async function navigateToMenu(page, menuLabel) {
-  const menuItem = page.locator('.oxd-main-menu-item span', { hasText: menuLabel });
-  await menuItem.waitFor({ state: 'visible', timeout: 10000 });
-  await menuItem.click();
-  await page.waitForLoadState('networkidle');
+async function openPage(page, route) {
+  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  await waitForPageReady(page);
+}
+
+/**
+ * Logs in to OrangeHRM with the given credentials.
+ * @param {import('@playwright/test').Page} page
+ */
+async function login(page, username, password) {
+  await page.goto('/web/index.php/auth/login', { waitUntil: 'domcontentloaded' });
+  await page.locator('input[name="username"]').fill(username);
+  await page.locator('input[name="password"]').fill(password);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL('**/dashboard/**', { timeout: 30000 });
+}
+
+/**
+ * Locator for a top navigation tab (the bar under the page title).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name  e.g. 'Entitlements', 'Configure'
+ */
+function topNavTab(page, name) {
+  return page.locator('.oxd-topbar-body-nav-tab', { hasText: name }).first();
+}
+
+/**
+ * Opens a top-nav dropdown (e.g. Performance > Configure) and clicks one of its items.
+ * In OrangeHRM these menus open on click, not hover, and their items only exist once open.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} tabName   e.g. 'Configure'
+ * @param {string} itemName  e.g. 'KPIs'
+ */
+async function openTopNavItem(page, tabName, itemName) {
+  await topNavTab(page, tabName).click();
+  const item = page.locator('.oxd-dropdown-menu').getByText(itemName, { exact: true });
+  await expect(item).toBeVisible();
+  await item.click();
 }
 
 /**
  * Selects a value from an OrangeHRM dropdown (custom oxd-select component).
  * @param {import('@playwright/test').Page} page
- * @param {import('@playwright/test').Locator} container  — the wrapper div
- * @param {string} optionText
+ * @param {import('@playwright/test').Locator} wrapper  the .oxd-select-wrapper element
+ * @param {string} [optionText]  option to pick; omit to pick the first real option
  */
-async function selectDropdownOption(page, container, optionText) {
-  await container.click();
-  const option = page
-    .locator('.oxd-select-dropdown .oxd-select-option span', { hasText: optionText })
-    .first();
-  await option.waitFor({ state: 'visible', timeout: 8000 });
+async function selectDropdownOption(page, wrapper, optionText) {
+  await wrapper.click();
+  const options = page.locator('.oxd-select-dropdown .oxd-select-option');
+  const option = optionText
+    ? options.filter({ hasText: optionText }).first()
+    : options.filter({ hasNotText: '-- Select --' }).first();
+  await expect(option).toBeVisible();
   await option.click();
 }
 
 /**
- * Fills a date input field (OrangeHRM uses text inputs for dates).
- * @param {import('@playwright/test').Locator} inputLocator
- * @param {string} dateStr  e.g. '2025-12-01'
+ * Fills an OrangeHRM date field.
+ * The display format depends on the site's localisation settings (the demo
+ * currently uses yyyy-dd-mm), so the format is read from the field's placeholder.
+ * @param {import('@playwright/test').Locator} input
+ * @param {string} isoDate  date as YYYY-MM-DD
  */
-async function fillDateInput(inputLocator, dateStr) {
-  // OrangeHRM date fields are plain text inputs formatted as MM/DD/YYYY
-  const [year, month, day] = dateStr.split('-');
-  const formatted = `${month}/${day}/${year}`;
-  await inputLocator.clear();
-  await inputLocator.type(formatted, { delay: 50 });
+async function fillDateInput(input, isoDate) {
+  const [year, month, day] = isoDate.split('-');
+  const placeholder = ((await input.getAttribute('placeholder')) || 'yyyy-mm-dd').toLowerCase();
+  const formatted = placeholder
+    .replace('yyyy', year)
+    .replace('mm', month)
+    .replace('dd', day);
+  await input.fill(formatted);
+  await input.press('Tab');
 }
 
 /**
- * Waits for a toast/success message to appear and disappear.
+ * Waits for a toast message (e.g. "Successfully Saved").
  * @param {import('@playwright/test').Page} page
- * @param {string} [text]  Optional text to assert in the toast
+ * @param {string} [text]
  */
 async function waitForToast(page, text) {
   const toast = page.locator('.oxd-toast');
-  await toast.waitFor({ state: 'visible', timeout: 15000 });
-  if (text) {
-    await toast.locator(`text=${text}`).waitFor({ timeout: 10000 });
-  }
+  await expect(toast.first()).toBeVisible({ timeout: 15000 });
+  if (text) await expect(toast.first()).toContainText(text);
   return toast;
 }
 
 /**
- * Searches the employee list table using the search/filter bar.
+ * Types into an autocomplete field (e.g. Employee Name) and picks the first suggestion.
  * @param {import('@playwright/test').Page} page
- * @param {string} name
+ * @param {import('@playwright/test').Locator} input
+ * @param {string} text
  */
-async function searchEmployeeByName(page, name) {
-  const nameInput = page
-    .locator('.oxd-table-filter-area input[placeholder*="Type"]')
+async function pickAutocomplete(page, input, text) {
+  await input.fill(text);
+  const option = page.locator('.oxd-autocomplete-dropdown .oxd-autocomplete-option')
+    .filter({ hasNotText: 'Searching' })
     .first();
-  await nameInput.fill(name);
-  await page.click('button[type="submit"]');
-  await page.waitForLoadState('networkidle');
+  await expect(option).toBeVisible({ timeout: 15000 });
+  await option.click();
+}
+
+/**
+ * Locator that matches either the first result row or the "No Records Found" message,
+ * for searches on shared demo data where either outcome is valid.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} rowSelector  e.g. '.oxd-table-card'
+ */
+function resultsOrNoRecords(page, rowSelector) {
+  return page.locator(rowSelector).first()
+    .or(page.getByText('No Records Found', { exact: true }))
+    .first();
 }
 
 module.exports = {
+  waitForPageReady,
+  openPage,
   login,
-  navigateToMenu,
+  topNavTab,
+  openTopNavItem,
   selectDropdownOption,
   fillDateInput,
   waitForToast,
-  searchEmployeeByName,
+  pickAutocomplete,
+  resultsOrNoRecords,
 };

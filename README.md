@@ -1,139 +1,120 @@
 # OrangeHRM E2E Playwright Test Suite
 
-End-to-end automated tests for [OrangeHRM](https://opensource-demo.orangehrmlive.com) using [Playwright](https://playwright.dev/) and JavaScript.
+End-to-end UI tests for the [OrangeHRM open-source demo](https://opensource-demo.orangehrmlive.com), written in JavaScript with [Playwright](https://playwright.dev/).
 
----
+![Playwright E2E tests](../../actions/workflows/playwright.yml/badge.svg)
 
-## 📋 Test Coverage
+## Test coverage
 
-| Module             | File                     | Test Cases |
-|--------------------|--------------------------|------------|
-| Authentication     | `tests/auth.spec.js`     | TC-AUTH-01 to TC-AUTH-05 |
-| Dashboard          | `tests/dashboard.spec.js`| TC-DASH-01 to TC-DASH-05 |
-| PIM / Employees    | `tests/pim.spec.js`      | TC-PIM-01 to TC-PIM-08   |
-| Leave Management   | `tests/leave.spec.js`    | TC-LEAVE-01 to TC-LEAVE-07 |
-| Recruitment        | `tests/recruitment.spec.js` | TC-REC-01 to TC-REC-07 |
-| Performance        | `tests/performance.spec.js` | TC-PERF-01 to TC-PERF-06 |
-| Admin              | `tests/admin.spec.js`    | TC-ADM-01 to TC-ADM-08  |
-| My Info            | `tests/myinfo.spec.js`   | TC-INFO-01 to TC-INFO-05 |
-| Directory & Buzz   | `tests/directory.spec.js`| TC-DIR-01 to TC-DIR-04 + TC-BUZZ-01 to TC-BUZZ-03 |
-| Time & Attendance  | `tests/time.spec.js`     | TC-TIME-01 to TC-TIME-05 |
+| Module            | File                        | Test cases                   | Count |
+|-------------------|-----------------------------|------------------------------|------:|
+| Authentication    | `tests/auth.spec.js`        | TC-AUTH-01 to TC-AUTH-05     | 5 |
+| Dashboard         | `tests/dashboard.spec.js`   | TC-DASH-01 to TC-DASH-03     | 3 |
+| PIM / Employees   | `tests/pim.spec.js`         | TC-PIM-01 to TC-PIM-08       | 8 |
+| Leave             | `tests/leave.spec.js`       | TC-LEAVE-01 to TC-LEAVE-05   | 5 |
+| Recruitment       | `tests/recruitment.spec.js` | TC-REC-01 to TC-REC-07       | 7 |
+| Performance       | `tests/performance.spec.js` | TC-PERF-01 to TC-PERF-06     | 6 |
+| Admin             | `tests/admin.spec.js`       | TC-ADM-01 to TC-ADM-08       | 8 |
+| My Info           | `tests/myinfo.spec.js`      | TC-INFO-01 to TC-INFO-05     | 5 |
+| Directory & Buzz  | `tests/directory.spec.js`   | TC-DIR-01 to TC-DIR-04, TC-BUZZ-01 to TC-BUZZ-03 | 7 |
+| Time & Attendance | `tests/time.spec.js`        | TC-TIME-01 to TC-TIME-05     | 5 |
 
-**Total: 53 test cases**
+**Total: 59 test cases**, plus a one-time login setup step.
 
----
+Highlights include adding an employee end to end, assigning leave (handling both the success and the insufficient-balance confirmation paths), form validation on several modules, search and reset filters, and navigating OrangeHRM's click-to-open dropdown menus.
 
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) v16 or later
-- npm
+- [Node.js](https://nodejs.org/) 18 or later
 
-### 1. Install Dependencies
+### Install
 
 ```bash
 npm install
-npx playwright install
+npx playwright install chromium
 ```
 
-### 2. Run All Tests
+### Run
 
 ```bash
-npm test
+npm test                 # all tests, headless
+npm run test:headed      # watch the browser
+npm run test:ui          # Playwright's interactive UI mode
+npm run test:report      # open the last HTML report
 ```
 
-### 3. Run Tests with Browser UI (headed)
+### Run one module
 
 ```bash
-npm run test:headed
+npm run test:auth
+npm run test:dashboard
+npm run test:pim
+npm run test:leave
+npm run test:recruitment
+npm run test:performance
+npm run test:admin
+npm run test:myinfo
+npm run test:directory
+npm run test:time
 ```
 
-### 4. Run Playwright Interactive UI
-
-```bash
-npm run test:ui
-```
-
-### 5. Run a Specific Module
-
-```bash
-npm run test:login        # Auth tests only
-npm run test:employees    # PIM tests only
-npm run test:leave        # Leave tests only
-npm run test:recruitment  # Recruitment tests only
-npm run test:performance  # Performance tests only
-npm run test:admin        # Admin tests only
-npm run test:dashboard    # Dashboard tests only
-```
-
-### 6. View HTML Report
-
-```bash
-npm run test:report
-```
-
----
-
-## 🗂️ Project Structure
+## Project structure
 
 ```
 orangehrm-e2e/
+├── .github/workflows/playwright.yml   # CI: runs the suite and uploads the report
 ├── tests/
-│   ├── auth.setup.js         # Saves login session (runs once)
-│   ├── auth.spec.js          # Login/logout tests
-│   ├── dashboard.spec.js     # Dashboard tests
-│   ├── pim.spec.js           # Employee management tests
-│   ├── leave.spec.js         # Leave management tests
-│   ├── recruitment.spec.js   # Recruitment tests
-│   ├── performance.spec.js   # Performance management tests
-│   ├── admin.spec.js         # Admin module tests
-│   ├── myinfo.spec.js        # My Info / Profile tests
-│   ├── directory.spec.js     # Directory & Buzz tests
-│   └── time.spec.js          # Time & Attendance tests
+│   ├── auth.setup.js        # Logs in once and saves the session
+│   ├── auth.spec.js         # Login, invalid login, validation, forgot password, logout
+│   ├── dashboard.spec.js    # Sidebar, header, user menu
+│   ├── pim.spec.js          # Employee list, add employee, search, profile tabs
+│   ├── leave.spec.js        # Assign leave, validation, entitlements, date filter
+│   ├── recruitment.spec.js  # Vacancies and candidates
+│   ├── performance.spec.js  # Reviews, KPIs, My Reviews
+│   ├── admin.spec.js        # System users, job titles, pay grades, locations
+│   ├── myinfo.spec.js       # Personal details, contact/emergency tabs, change password
+│   ├── directory.spec.js    # Employee directory and Buzz feed
+│   └── time.spec.js         # Timesheets, punch in/out, attendance records
 ├── utils/
-│   ├── constants.js          # URLs, credentials, test data
-│   └── helpers.js            # Shared helper functions
-├── playwright/
-│   └── .auth/
-│       └── admin.json        # Saved auth session (auto-generated)
-├── playwright.config.js      # Playwright configuration
-├── package.json
-└── README.md
+│   ├── constants.js         # Routes, demo credentials, test data
+│   └── helpers.js           # Shared page-ready waits and UI helpers
+├── playwright.config.js
+└── package.json
 ```
 
----
+## Configuration
 
-## ⚙️ Configuration
+Set in `playwright.config.js`:
 
-All configuration is in `playwright.config.js`:
+| Setting     | Value |
+|-------------|-------|
+| Base URL    | `https://opensource-demo.orangehrmlive.com` |
+| Browser     | Chromium (Desktop Chrome) |
+| Workers     | 1 (tests run one at a time on the shared demo) |
+| Timeouts    | 90s per test, 15s per assertion and action, 45s per navigation |
+| Retries     | 1 locally, 2 in CI |
+| Reports     | List and HTML (plus GitHub annotations in CI) |
+| On failure  | Screenshot and video kept; trace recorded on the first retry |
 
-| Setting       | Value                                            |
-|---------------|--------------------------------------------------|
-| Base URL      | `https://opensource-demo.orangehrmlive.com`      |
-| Browsers      | Chromium, Firefox                                |
-| Timeout       | 60s per test                                     |
-| Retries       | 1 (local) / 2 (CI)                               |
-| Reports       | HTML + JSON                                      |
-| Screenshots   | On failure only                                  |
-| Video         | On first retry                                   |
+## Continuous integration
 
----
+`.github/workflows/playwright.yml` runs the suite on every push to `main`, on pull requests, on demand, and weekly on Mondays. The weekly run catches changes to the public demo site even when the code hasn't changed. The HTML report, with screenshots, video and traces for any failures, is uploaded as a build artifact.
 
-## 🔐 Credentials
+## Credentials
 
-The demo site uses publicly known credentials:
+The tests use the public demo credentials that OrangeHRM publishes on its login page:
 
-| Role  | Username | Password  |
-|-------|----------|-----------|
-| Admin | Admin    | admin123  |
+| Role  | Username | Password |
+|-------|----------|----------|
+| Admin | Admin    | admin123 |
 
-> ⚠️ These are public demo credentials from the OrangeHRM open-source demo. Do not use real credentials.
+## Design decisions
 
----
-
-## 💡 Key Design Decisions
-
-- **Session reuse**: `auth.setup.js` logs in once and saves the browser state. All subsequent tests reuse this session — faster and more reliable.
-- **Sequential execution**: Tests run sequentially (`workers: 1`) to avoid conflicts on the shared demo site.
-- **Resilient selectors**: Uses OrangeHRM's own CSS class patterns (`.oxd-*`, `.orangehrm-*`) for stable element targeting.
-- **Graceful assertions**: For search results, tests handle both "found" and "no records" states to avoid brittle tests on a shared environment.
+- **Log in once.** `auth.setup.js` logs in and saves the browser session; every other test reuses it. The authentication tests start from a clean session instead.
+- **Wait for the page, not the network.** Tests never wait for `networkidle`, which is slow and unreliable on the shared demo. `openPage()` and `waitForPageReady()` wait for the page header to render and for OrangeHRM's loading spinner to disappear, and assertions wait for the specific element they check.
+- **Selectors that match one element.** Playwright fails a check when a selector matches several elements (strict mode), so each assertion targets a single, specific element.
+- **Dropdown menus are clicked, not hovered.** Top-bar items such as *Performance › Configure* and *Leave › Entitlements* open on click, and their items only exist once open. `openTopNavItem()` handles this.
+- **Locale-aware dates.** The demo currently shows dates as `yyyy-dd-mm`. `fillDateInput()` reads the format from the field's placeholder, so tests keep working if the site's date format changes.
+- **Shared, changing data.** The demo resets and is used by many people at once, so searches accept either results or "No Records Found", new records use unique IDs, and the leave test picks whichever employee and leave type are available.
+- **Sequential runs.** `workers: 1` avoids tests interfering with each other on the shared site.
