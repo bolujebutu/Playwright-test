@@ -4,7 +4,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { ROUTES, TEST_DATA } = require('../utils/constants');
-const { openPage, waitForPageReady, resultsOrNoRecords } = require('../utils/helpers');
+const { openPage, waitForPageReady, noRecordsLabel, resultsOrNoRecords } = require('../utils/helpers');
 
 test.describe('PIM - Employee Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -65,7 +65,9 @@ test.describe('PIM - Employee Management', () => {
     await waitForPageReady(page);
 
     await expect(page.locator('.oxd-table-card')).toHaveCount(0);
-    await expect(page.getByText('No Records Found', { exact: true })).toBeVisible();
+    await expect(noRecordsLabel(page)).toBeVisible();
+    // OrangeHRM also shows an info toast with the same message
+    await expect(page.locator('.oxd-toast').first()).toContainText('No Records Found');
   });
 
   // TC-PIM-06: View employee personal details

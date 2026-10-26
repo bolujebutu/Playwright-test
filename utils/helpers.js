@@ -123,15 +123,22 @@ async function pickAutocomplete(page, input, text) {
 }
 
 /**
- * Locator that matches either the first result row or the "No Records Found" message,
+ * The "No Records Found" label above a results table.
+ * (An info toast shows the same words, so this targets only the table's <span>.)
+ * @param {import('@playwright/test').Page} page
+ */
+function noRecordsLabel(page) {
+  return page.locator('span.oxd-text--span', { hasText: /^No Records Found$/ });
+}
+
+/**
+ * Locator that matches either the first result row or the "No Records Found" label,
  * for searches on shared demo data where either outcome is valid.
  * @param {import('@playwright/test').Page} page
  * @param {string} rowSelector  e.g. '.oxd-table-card'
  */
 function resultsOrNoRecords(page, rowSelector) {
-  return page.locator(rowSelector).first()
-    .or(page.getByText('No Records Found', { exact: true }))
-    .first();
+  return page.locator(rowSelector).first().or(noRecordsLabel(page)).first();
 }
 
 module.exports = {
@@ -144,5 +151,6 @@ module.exports = {
   fillDateInput,
   waitForToast,
   pickAutocomplete,
+  noRecordsLabel,
   resultsOrNoRecords,
 };

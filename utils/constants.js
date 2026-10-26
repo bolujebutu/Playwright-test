@@ -32,12 +32,23 @@ const ROUTES = {
   buzz:              '/web/index.php/buzz/viewBuzz',
 };
 
-// Returns a date `daysAhead` days from today as YYYY-MM-DD, moved forward to a weekday
-function futureWeekday(daysAhead) {
+const toIso = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Two consecutive working days (a Tuesday and Wednesday) at least `daysAhead` days from today,
+ * skipping the Christmas / New Year period when most holidays fall.
+ * @returns {{ start: string, end: string }}  dates as YYYY-MM-DD
+ */
+function workingDayPair(daysAhead) {
   const d = new Date();
   d.setDate(d.getDate() + daysAhead);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  const inHolidaySeason = () =>
+    (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 6);
+  while (d.getDay() !== 2 || inHolidaySeason()) d.setDate(d.getDate() + 1);
+  const end = new Date(d);
+  end.setDate(end.getDate() + 1);
+  return { start: toIso(d), end: toIso(end) };
 }
 
 const TEST_DATA = {
@@ -49,9 +60,9 @@ const TEST_DATA = {
     employeeId: `AUTO${Date.now().toString().slice(-6)}`,
   },
   leave: {
-    startDate: futureWeekday(60),
-    endDate:   futureWeekday(62),
-    comment:   'Automated test leave request',
+    firstDaysAhead: 14,   // first date window tried, in days from today
+    maxAttempts:    5,    // windows to try if the site reports no working days
+    comment:        'Automated test leave request',
   },
   leaveFilter: {
     fromDate: '2024-01-01',
@@ -59,4 +70,4 @@ const TEST_DATA = {
   },
 };
 
-module.exports = { BASE_URL, CREDENTIALS, ROUTES, TEST_DATA };
+module.exports = { BASE_URL, CREDENTIALS, ROUTES, TEST_DATA, workingDayPair };

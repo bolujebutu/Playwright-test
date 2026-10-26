@@ -4,7 +4,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { ROUTES } = require('../utils/constants');
-const { openPage, waitForPageReady } = require('../utils/helpers');
+const { openPage, waitForPageReady, pickAutocomplete } = require('../utils/helpers');
 
 test.describe('Directory', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,9 +28,14 @@ test.describe('Directory', () => {
 
   // TC-DIR-03: Reset directory search works
   test('TC-DIR-03: should reset Directory search', async ({ page }) => {
+    // The name filter only takes effect once a suggestion is picked; text typed
+    // without picking one isn't part of the filter, so Reset leaves it alone.
     const nameInput = page.locator('input[placeholder*="Type"]').first();
-    await nameInput.fill('Alice');
+    await pickAutocomplete(page, nameInput, 'a');
+    await expect(nameInput).not.toHaveValue('');
+
     await page.getByRole('button', { name: 'Reset' }).click();
+    await waitForPageReady(page);
     await expect(nameInput).toHaveValue('');
   });
 
