@@ -11,7 +11,7 @@ module.exports = defineConfig({
   // The public demo is shared and slow: run one test at a time and allow generous timeouts
   fullyParallel: false,
   workers: 1,
-  timeout: 90_000,
+  timeout: 150_000,
   expect: { timeout: 15_000 },
 
   forbidOnly: isCI,         // fail CI if a test.only is left in by mistake
@@ -24,7 +24,7 @@ module.exports = defineConfig({
   use: {
     baseURL: BASE_URL,
     viewport: { width: 1280, height: 720 },
-    navigationTimeout: 45_000,
+    navigationTimeout: 60_000,
     actionTimeout: 15_000,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',

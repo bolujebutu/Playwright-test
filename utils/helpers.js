@@ -22,7 +22,13 @@ async function waitForPageReady(page) {
  * @param {string} route  e.g. ROUTES.pim
  */
 async function openPage(page, route) {
-  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
+  } catch (error) {
+    // The shared demo occasionally stalls on a request; try the navigation once more
+    if (error.name !== 'TimeoutError') throw error;
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
+  }
   await waitForPageReady(page);
 }
 

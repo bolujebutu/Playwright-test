@@ -6,8 +6,52 @@ const { test, expect } = require('@playwright/test');
 const { ROUTES, TEST_DATA, workingDayPair } = require('../utils/constants');
 const {
   openPage, waitForPageReady, openTopNavItem, selectDropdownOption,
-  fillDateInput, pickAutocomplete,
+  fillDateInput,
 } = require('../utils/helpers');
+
+/**
+ * On the Assign Leave form, tries employee suggestions and leave types until the form's
+ * "Leave Balance" shows at least `minDays`. Leaves that employee and type selected.
+ * @returns {Promise<{employee: string, leaveType: string, balance: number} | null>}
+ */
+async function findEmployeeWithLeaveBalance(page, minDays, maxEmployees = 5) {
+  const employeeInput = page.locator('input[placeholder="Type for hints..."]');
+  const suggestions = page.locator('.oxd-autocomplete-dropdown .oxd-autocomplete-option')
+    .filter({ hasNotText: 'Searching' });
+  const leaveTypeSelect = page.locator('.oxd-select-wrapper').first();
+  const typeOptions = page.locator('.oxd-select-dropdown .oxd-select-option')
+    .filter({ hasNotText: '-- Select --' });
+  const balanceField = page.locator('.oxd-input-group', { hasText: 'Leave Balance' });
+
+  for (let e = 0; e < maxEmployees; e++) {
+    await employeeInput.fill('a');
+    await expect(suggestions.first()).toBeVisible({ timeout: 15000 });
+    if (e >= await suggestions.count()) break;
+    const employee = ((await suggestions.nth(e).textContent()) || '').replace(/\s+/g, ' ').trim();
+    await suggestions.nth(e).click();
+
+    await leaveTypeSelect.click();
+    await expect(typeOptions.first()).toBeVisible();
+    const typeCount = await typeOptions.count();
+
+    for (let t = 0; t < typeCount; t++) {
+      if (t > 0) {
+        await leaveTypeSelect.click();
+        await expect(typeOptions.first()).toBeVisible();
+      }
+      const leaveType = ((await typeOptions.nth(t).textContent()) || '').trim();
+      // Selecting a type makes the form fetch that balance; wait for the answer
+      const balanceLoaded = page.waitForResponse((r) => r.url().includes('/leave-balance/'));
+      await typeOptions.nth(t).click();
+      await balanceLoaded;
+      await expect(balanceField).toContainText(/Day/);
+
+      const balance = parseFloat(((await balanceField.textContent()) || '').match(/(-?[\d.]+)\s*Day/)?.[1] || '0');
+      if (balance >= minDays) return { employee, leaveType, balance };
+    }
+  }
+  return null;
+}
 
 test.describe('Leave Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -27,11 +71,12 @@ test.describe('Leave Management', () => {
     const { firstDaysAhead, maxAttempts, comment } = TEST_DATA.leave;
     await openPage(page, ROUTES.leaveAssign);
 
-    // Employee: type a letter and take the first suggestion (demo data changes)
-    await pickAutocomplete(page, page.locator('input[placeholder="Type for hints..."]'), 'a');
+    // Leave can only be assigned against an entitlement, and the shared demo's data changes,
+    // so find an employee and leave type that currently have at least 1 day of balance.
+    const found = await findEmployeeWithLeaveBalance(page, 1);
+    test.skip(!found, 'No employee with leave balance on the shared demo right now');
+    test.info().annotations.push({ type: 'leave', description: `${found.employee} / ${found.leaveType} (${found.balance} days)` });
 
-    // Leave type: first available option
-    await selectDropdownOption(page, page.locator('.oxd-select-wrapper').first());
     await page.locator('textarea').fill(comment);
 
     const dates = page.locator('.oxd-date-input input');
@@ -55,7 +100,7 @@ test.describe('Leave Management', () => {
 
       await page.getByRole('button', { name: 'Assign' }).click();
 
-      // Outcome: a toast, or a confirmation dialog when the leave balance is insufficient
+      // Outcome: a toast, or a confirmation dialog (e.g. if the balance changed meanwhile)
       await expect(toast.or(confirmDialog).first()).toBeVisible({ timeout: 20000 });
       if (await confirmDialog.isVisible()) {
         outcome = 'confirm';

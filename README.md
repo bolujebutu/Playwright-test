@@ -92,7 +92,7 @@ Set in `playwright.config.js`:
 | Base URL    | `https://opensource-demo.orangehrmlive.com` |
 | Browser     | Chromium (Desktop Chrome) |
 | Workers     | 1 (tests run one at a time on the shared demo) |
-| Timeouts    | 90s per test, 15s per assertion and action, 45s per navigation |
+| Timeouts    | 150s per test, 15s per assertion and action, 60s per navigation (retried once if the site stalls) |
 | Retries     | 1 locally, 2 in CI |
 | Reports     | List and HTML (plus GitHub annotations in CI) |
 | On failure  | Screenshot and video kept; trace recorded on the first retry |
@@ -116,5 +116,5 @@ The tests use the public demo credentials that OrangeHRM publishes on its login 
 - **Selectors that match one element.** Playwright fails a check when a selector matches several elements (strict mode), so each assertion targets a single, specific element.
 - **Dropdown menus are clicked, not hovered.** Top-bar items such as *Performance › Configure* and *Leave › Entitlements* open on click, and their items only exist once open. `openTopNavItem()` handles this.
 - **Locale-aware dates.** The demo currently shows dates as `yyyy-dd-mm`. `fillDateInput()` reads the format from the field's placeholder, so tests keep working if the site's date format changes.
-- **Shared, changing data.** The demo resets and is used by many people at once, so searches accept either results or "No Records Found", new records use unique IDs, and the leave test picks whichever employee and leave type are available. It also books leave on working days a month ahead, skipping the Christmas period, and moves a week later if the site reports "No Working Days Selected" (holidays on the shared demo can change).
+- **Shared, changing data.** The demo resets and is used by many people at once, so searches accept either results or "No Records Found", new records use unique IDs, and the leave test looks for an employee and leave type that currently have at least one day of balance (leave can only be assigned against an entitlement). It also books leave on working days a month ahead, skipping the Christmas period, and moves a week later if the site reports "No Working Days Selected" (holidays on the shared demo can change).
 - **Sequential runs.** `workers: 1` avoids tests interfering with each other on the shared site.
